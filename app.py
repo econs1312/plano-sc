@@ -5,7 +5,7 @@ import os
 import io
 
 from modules.anonymizer import gerar_codigo_caso, sanitizar_texto
-from modules.gemini_extractor import extrair_evidencia_com_gemini
+from modules.gemini_extractor import extrair_evidencia_com_gemini, transcrever_audio_com_gemini
 from modules.storage import init_db, salvar_caso, obter_resumo_estatistico, obter_todos_itens_df, exportar_para_excel
 
 # Inicializar banco de dados local
@@ -242,8 +242,35 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
         m2.metric("Total Faturado pelo Prestador", f"R$ {tot_fat:,.2f}")
         
         st.write("")
-        # 4. Identificação Opcional e Consentimento
-        st.markdown("#### 4. Identificação (Opcional) e Envio")
+        # 4. Relato e Identificação (Opcionais)
+        st.markdown("#### 4. Relato e Identificação (Opcionais)")
+        
+        relato_escrito = st.text_area(
+            "Breve Relato ou Observações (Opcional):",
+            placeholder="Conte brevemente o contexto do atendimento, se houve negativa, cobrança inesperada de insumos ou dúvida em algum item...",
+            help="Espaço para descrever particularidades que não aparecem no comprovante."
+        )
+
+        st.caption("🎙️ **Ou se preferir, grave um áudio pelo microfone (Opcional):**")
+        audio_gravado = st.audio_input("Gravar relato em áudio:", label_visibility="collapsed")
+        
+        audio_transcrito_texto = ""
+        if audio_gravado is not None:
+            audio_hash = f"audio_{audio_gravado.size}_{arquivo_enviado.name}"
+            if st.session_state.get("ultimo_audio_hash") != audio_hash:
+                with st.spinner("Transcrevendo seu relato em áudio com IA..."):
+                    transcricao = transcrever_audio_com_gemini(
+                        audio_bytes=audio_gravado.getvalue(),
+                        mime_type=audio_gravado.type or "audio/wav",
+                        api_key=api_key
+                    )
+                    st.session_state["audio_transcricao"] = transcricao
+                    st.session_state["ultimo_audio_hash"] = audio_hash
+            
+            if st.session_state.get("audio_transcricao"):
+                st.info(f"📝 **Transcrição automática do áudio:** \"{st.session_state['audio_transcricao']}\"")
+                audio_transcrito_texto = st.session_state["audio_transcricao"]
+
         matricula_opcional = st.text_input(
             "Matrícula ou Contato (Opcional):",
             placeholder="Ex: c123456 ou e-mail/telefone (deixe em branco se preferir anonimato total)",
@@ -257,6 +284,14 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
         
         if st.button("📤 Enviar Informações", type="primary", use_container_width=True, disabled=not concorda):
             codigo_caso = gerar_codigo_caso(uf_selecionada)
+            
+            relato_partes = []
+            if relato_escrito.strip():
+                relato_partes.append(sanitizar_texto(relato_escrito.strip()))
+            if audio_transcrito_texto.strip():
+                relato_partes.append(f"[Áudio Transcrito]: {audio_transcrito_texto.strip()}")
+            relato_final = " | ".join(relato_partes)
+            
             caso_info = {
                 "codigo_caso": codigo_caso,
                 "uf": uf_selecionada,
@@ -264,7 +299,8 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
                 "hospital_prestador": sanitizar_texto(hosp_val),
                 "tipo_atendimento": tipo_atendimento_selecionado,
                 "data_evento": sanitizar_texto(data_val),
-                "identificacao_opcional": matricula_opcional.strip()
+                "identificacao_opcional": matricula_opcional.strip(),
+                "relato_observacoes": relato_final
             }
             
             itens_finais = df_editado.to_dict(orient="records")
@@ -282,5 +318,6 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
                 st.rerun()
     else:
         st.warning("Nenhum item com valores foi discriminado automaticamente. Verifique se o print enviado contém o extrato detalhado.")
+
 
 

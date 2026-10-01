@@ -104,3 +104,22 @@ def extrair_evidencia_com_gemini(arquivo_bytes: bytes, mime_type: str, api_key: 
         "erro": f"Não foi possível processar o documento com os modelos Gemini disponíveis: {str(ultimo_erro)}"
     }
 
+
+def transcrever_audio_com_gemini(audio_bytes: bytes, mime_type: str, api_key: str) -> str:
+    """
+    Transcreve com IA o relato falado do colega via Gemini.
+    """
+    if not api_key:
+        return ""
+    genai.configure(api_key=api_key)
+    for modelo in MODELOS_DISPONIVEIS:
+        try:
+            model = genai.GenerativeModel(modelo)
+            response = model.generate_content([
+                {"mime_type": mime_type, "data": audio_bytes},
+                "Transcreva fielmente o conteúdo deste áudio em português. Retorne apenas o texto transcrito, sem introduções, aspas ou comentários."
+            ])
+            return sanitizar_texto(response.text.strip())
+        except Exception:
+            continue
+    return ""
