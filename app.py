@@ -15,7 +15,7 @@ init_db()
 # Configuração da Página: Centralizada, sem sidebar e sem menu
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Levantamento Amostral - Plano SC",
+    page_title="Colaboração de Extratos - Plano SC",
     page_icon="📋",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -129,12 +129,12 @@ if modo_admin:
 # -----------------------------------------------------------------------------
 # INTERFACE PRINCIPAL: Formulário Único de Recepção de Dados
 # -----------------------------------------------------------------------------
-st.markdown("<div class='main-title'>📋 Levantamento Amostral de Faturamentos</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-title'>Plataforma colaborativa para envio de comprovantes e demonstrativos para subsidiar estudo atuarial e pericial independente sobre o Plano SC.</div>", unsafe_allow_html=True)
+st.markdown("<div class='main-title'>📋 Levantamento Colaborativo de Extratos</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-title'>Espaço colaborativo para reunir demonstrativos e extratos de atendimentos. O objetivo é organizar dúvidas frequentes e exemplos práticos para apresentar ao Conselho de Usuários do Plano SC.</div>", unsafe_allow_html=True)
 
 st.markdown("""
 <div class='notice-box'>
-    🔒 <strong>Privacidade Garantida (LGPD):</strong> Nenhum dado de identificação pessoal (nome, CPF, matrícula ou telefone) é armazenado. As imagens passam por processo automatizado de leitura e desidentificação antes de qualquer consolidação.
+    🔒 <strong>Privacidade Total (LGPD):</strong> Não coletamos nomes, matrículas ou dados pessoais. As imagens passam por leitura automática que extrai apenas os procedimentos e valores para organização coletiva.
 </div>
 """, unsafe_allow_html=True)
 
@@ -168,12 +168,12 @@ arquivo_enviado = st.file_uploader(
 
 if arquivo_enviado is not None:
     st.write("")
-    if st.button("🔍 Processar Comprovante com IA", type="primary", use_container_width=True):
+    if st.button("🔍 Identificar Itens do Comprovante", type="primary", use_container_width=True):
         if not api_key:
             st.error("Chave da API Gemini não configurada.")
             st.stop()
             
-        with st.spinner("Analisando comprovante e extraindo dados dos itens..."):
+        with st.spinner("Identificando procedimentos e valores no comprovante..."):
             bytes_arquivo = arquivo_enviado.getvalue()
             resultado = extrair_evidencia_com_gemini(
                 arquivo_bytes=bytes_arquivo,
@@ -228,7 +228,7 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
                 "quantidade": st.column_config.NumberColumn("Qtd", min_value=0.1, step=1.0, format="%.1f"),
                 "coparticipacao": st.column_config.NumberColumn("Coparticipação (R$)", min_value=0.0, format="R$ %.2f"),
                 "faturado_credenciado": st.column_config.NumberColumn("Faturado Credenciado (R$)", min_value=0.0, format="R$ %.2f"),
-                "observacao_estatistica": st.column_config.TextColumn("Observação")
+                "observacao_estatistica": st.column_config.TextColumn("Observação / Detalhe")
             },
             use_container_width=True,
             num_rows="dynamic"
@@ -244,11 +244,11 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
         st.write("")
         # 4. Consentimento e Envio
         concorda = st.checkbox(
-            "Autorizo o processamento anônimo e desidentificado destes valores exclusivamente para fins de pesquisa e levantamento estatístico coletivo sobre o Plano SC.",
+            "Autorizo o compartilhamento anônimo destas informações de procedimentos e valores para compor a pauta de esclarecimentos junto ao Conselho de Usuários do Plano SC.",
             value=False
         )
         
-        if st.button("📤 Enviar Dados para a Pesquisa", type="primary", use_container_width=True, disabled=not concorda):
+        if st.button("📤 Enviar Informações", type="primary", use_container_width=True, disabled=not concorda):
             codigo_caso = gerar_codigo_caso(uf_selecionada)
             caso_info = {
                 "codigo_caso": codigo_caso,
@@ -263,11 +263,12 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
             salvar_caso(caso_info, itens_finais)
             
             st.balloons()
-            st.success(f"✅ Comprovante registrado com sucesso sob o protocolo anônimo: **{codigo_caso}**")
-            st.info("Muito obrigado por colaborar com o levantamento amostral independente.")
+            st.success(f"✅ Informações registradas com sucesso sob o protocolo anônimo: **{codigo_caso}**")
+            st.info("Muito obrigado pela colaboração! Suas informações foram registradas anonimamente e ajudarão a embasar as consultas junto ao Conselho de Usuários do Plano SC.")
             
             del st.session_state["dados_extraidos"]
             if st.button("Enviar Outro Comprovante"):
                 st.rerun()
     else:
         st.warning("Nenhum item com valores foi discriminado automaticamente. Verifique se o print enviado contém o extrato detalhado.")
+

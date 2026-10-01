@@ -11,8 +11,8 @@ MODELOS_DISPONIVEIS = [
 ]
 
 PROMPT_SISTEMA = """
-Você é um especialista em análise estatística de faturamentos médicos e demonstrativos de coparticipação do Plano SC.
-Sua missão é extrair com rigor pericial as informações dos itens faturados contidos no documento/imagem enviado, preparando os dados para um estudo amostral amplo.
+Você é um assistente de extração e estruturação de demonstrativos de despesas médicas e coparticipação do Plano SC.
+Sua missão é extrair com precisão e fidelidade as informações dos itens faturados contidos no documento/imagem enviado, organizando procedimentos e valores.
 
 DIRETRIZES FUNDAMENTAIS:
 1. ANONIMIZAÇÃO E PRIVACIDADE (LGPD):
@@ -32,7 +32,7 @@ DIRETRIZES FUNDAMENTAIS:
       "coparticipacao": 0.00,
       "faturado_credenciado": 0.00,
       "categoria": "Dispositivos / Insumos Especiais | Materiais de Consumo Básico | Medicamentos / Soluções | Exames e Diagnósticos | Consultas / Pronto-Socorro | Taxas e Diárias | Outros",
-      "observacao_estatistica": "Breve nota descritiva se for caso relevante para estudo de custos (ex: insumo básico avulso, equipo, exame de alta coparticipação)"
+      "observacao_estatistica": "Breve nota descritiva se houver alguma particularidade visível no documento"
     }
   ]
 }
@@ -103,3 +103,4 @@ def extrair_evidencia_com_gemini(arquivo_bytes: bytes, mime_type: str, api_key: 
         "sucesso": False,
         "erro": f"Não foi possível processar o documento com os modelos Gemini disponíveis: {str(ultimo_erro)}"
     }
+
