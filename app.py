@@ -43,6 +43,25 @@ st.markdown("""
         padding-bottom: 3rem !important;
     }
 
+        /* Ocultar Badge de Criador / Perfil do Streamlit Community Cloud */
+    a[href*="share.streamlit.io/user"],
+    div[class*="ProfileBadge"],
+    div[class*="viewerBadge"],
+    div[class*="FloatingMenu"],
+    div[data-testid="stDecoration"],
+    div[data-testid="manage-app-button"],
+    #manage-app-button,
+    button[title*="profile"],
+    .viewerBadge_container__1QSob,
+    [class*="styles_viewerBadge"],
+    [class*="styles_profileBadge"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
     /* Tipografia e componentes da pesquisa */
     .main-header {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -376,4 +395,5 @@ elif opcao_menu == "📖 Metodologia & LGPD":
     - **SIMPRO / Brasíndice:** Referenciais de medicamentos e insumos hospitalares;
     - **Tabelas de Distribuidores:** Valores de aquisição e comodato de dispositivos médicos especiais.
     """)
+
 
