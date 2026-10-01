@@ -242,9 +242,16 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
         m2.metric("Total Faturado pelo Prestador", f"R$ {tot_fat:,.2f}")
         
         st.write("")
-        # 4. Consentimento e Envio
+        # 4. Identificação Opcional e Consentimento
+        st.markdown("#### 4. Identificação (Opcional) e Envio")
+        matricula_opcional = st.text_input(
+            "Matrícula ou Contato (Opcional):",
+            placeholder="Ex: c123456 ou e-mail/telefone (deixe em branco se preferir anonimato total)",
+            help="Campo estritamente opcional. Preencha apenas se desejar retorno ou acompanhamento junto ao Conselho de Usuários. Se deixar em branco, o envio será 100% anônimo."
+        )
+
         concorda = st.checkbox(
-            "Autorizo o compartilhamento anônimo destas informações de procedimentos e valores para compor a pauta de esclarecimentos junto ao Conselho de Usuários do Plano SC.",
+            "Autorizo o compartilhamento destas informações de procedimentos e valores para compor a pauta de esclarecimentos junto ao Conselho de Usuários do Plano SC.",
             value=False
         )
         
@@ -256,19 +263,24 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
                 "cidade": sanitizar_texto(cidade_informada),
                 "hospital_prestador": sanitizar_texto(hosp_val),
                 "tipo_atendimento": tipo_atendimento_selecionado,
-                "data_evento": sanitizar_texto(data_val)
+                "data_evento": sanitizar_texto(data_val),
+                "identificacao_opcional": matricula_opcional.strip()
             }
             
             itens_finais = df_editado.to_dict(orient="records")
             salvar_caso(caso_info, itens_finais)
             
             st.balloons()
-            st.success(f"✅ Informações registradas com sucesso sob o protocolo anônimo: **{codigo_caso}**")
-            st.info("Muito obrigado pela colaboração! Suas informações foram registradas anonimamente e ajudarão a embasar as consultas junto ao Conselho de Usuários do Plano SC.")
+            if matricula_opcional.strip():
+                st.success(f"✅ Informações registradas com sucesso sob o protocolo **{codigo_caso}** (com identificação registrada).")
+            else:
+                st.success(f"✅ Informações registradas com sucesso sob o protocolo anônimo: **{codigo_caso}**")
+            st.info("Muito obrigado pela colaboração! Suas informações ajudarão a embasar as consultas junto ao Conselho de Usuários do Plano SC.")
             
             del st.session_state["dados_extraidos"]
             if st.button("Enviar Outro Comprovante"):
                 st.rerun()
     else:
         st.warning("Nenhum item com valores foi discriminado automaticamente. Verifique se o print enviado contém o extrato detalhado.")
+
 

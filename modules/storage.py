@@ -32,6 +32,12 @@ def init_db():
         )
         """)
         
+        # Migração defensiva caso a coluna ainda não exista
+        try:
+            cursor.execute("ALTER TABLE casos ADD COLUMN identificacao_opcional TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
+
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS itens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,8 +70,8 @@ def salvar_caso(caso_info: dict, itens: list[dict]) -> str:
         cursor.execute("""
         INSERT INTO casos (
             codigo_caso, uf, cidade, hospital_prestador, tipo_atendimento,
-            data_evento, data_envio, total_itens, soma_coparticipacao, soma_faturado
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            data_evento, data_envio, total_itens, soma_coparticipacao, soma_faturado, identificacao_opcional
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             codigo_caso,
             caso_info.get("uf", "BR"),
@@ -139,6 +145,7 @@ def obter_todos_itens_df() -> pd.DataFrame:
         c.tipo_atendimento as "Tipo de Atendimento",
         c.data_evento as "Data do Evento",
         c.data_envio as "Data de Envio",
+        c.identificacao_opcional as "Matrícula / Contato (Opcional)",
         i.descricao as "Descrição do Item",
         i.categoria as "Categoria",
         i.quantidade as "Quantidade",
@@ -206,3 +213,4 @@ def exportar_para_excel() -> bytes:
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
