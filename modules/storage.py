@@ -41,6 +41,10 @@ def init_db():
             cursor.execute("ALTER TABLE casos ADD COLUMN relato_observacoes TEXT DEFAULT ''")
         except sqlite3.OperationalError:
             pass
+        try:
+            cursor.execute("ALTER TABLE casos ADD COLUMN natureza_inconsistencia TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
 
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS itens (
@@ -74,8 +78,8 @@ def salvar_caso(caso_info: dict, itens: list[dict]) -> str:
         cursor.execute("""
         INSERT INTO casos (
             codigo_caso, uf, cidade, hospital_prestador, tipo_atendimento,
-            data_evento, data_envio, total_itens, soma_coparticipacao, soma_faturado, identificacao_opcional, relato_observacoes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            data_evento, data_envio, total_itens, soma_coparticipacao, soma_faturado, identificacao_opcional, relato_observacoes, natureza_inconsistencia
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             codigo_caso,
             caso_info.get("uf", "BR"),
@@ -147,6 +151,7 @@ def obter_todos_itens_df() -> pd.DataFrame:
         c.cidade as "Cidade",
         c.hospital_prestador as "Hospital / Prestador",
         c.tipo_atendimento as "Tipo de Atendimento",
+        c.natureza_inconsistencia as "Classificação / Natureza",
         c.data_evento as "Data do Evento",
         c.data_envio as "Data de Envio",
         c.identificacao_opcional as "Matrícula / Contato (Opcional)",
@@ -218,6 +223,8 @@ def exportar_para_excel() -> bytes:
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
+
 
 
 

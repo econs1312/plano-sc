@@ -156,6 +156,18 @@ with col_tipo:
         ["Pronto-Socorro / Emergência", "Internação Hospitalar", "Cirurgia / Procedimento", "Exames / SADT", "Consulta Eletiva", "Outro / Não sei informar"]
     )
 
+natureza_inconsistencia_selecionada = st.selectbox(
+    "Principal Situação Observada:",
+    [
+        "Valores Fora da Curva (preços muito acima da média de mercado)",
+        "Cobrança Indevida (duplicidade, erro de lançamento ou procedimento não realizado)",
+        "Cobrança Avulsa de Itens Básicos (agulhas, luvas, algodão cobrados à parte)",
+        "Coparticipação Elevada (valor retido desproporcional ao atendimento)",
+        "Outra Dúvida / Envio Geral de Extrato"
+    ],
+    help="Ajuda a organizar as consultas por tema para apresentação ao Conselho de Usuários."
+)
+
 # 2. Upload do Comprovante
 st.markdown("#### 2. Anexo do Comprovante")
 st.caption("Envie capturas de tela do extrato de coparticipação, 'Detalhes do Evento' no app ou arquivo PDF:")
@@ -298,6 +310,7 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
                 "cidade": sanitizar_texto(cidade_informada),
                 "hospital_prestador": sanitizar_texto(hosp_val),
                 "tipo_atendimento": tipo_atendimento_selecionado,
+                "natureza_inconsistencia": natureza_inconsistencia_selecionada,
                 "data_evento": sanitizar_texto(data_val),
                 "identificacao_opcional": matricula_opcional.strip(),
                 "relato_observacoes": relato_final
@@ -318,6 +331,7 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
                 st.rerun()
     else:
         st.warning("Nenhum item com valores foi discriminado automaticamente. Verifique se o print enviado contém o extrato detalhado.")
+
 
 
 
