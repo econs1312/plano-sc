@@ -24,6 +24,26 @@ st.set_page_config(
 # Estilização CSS refinada
 st.markdown("""
 <style>
+    /* =====================================================================
+       BLINDAGEM VISUAL: Ocultar qualquer menção a GitHub, Streamlit e Desenvolvedor
+       ===================================================================== */
+    #MainMenu {visibility: hidden !important; display: none !important;}
+    footer {visibility: hidden !important; display: none !important;}
+    header {visibility: hidden !important; display: none !important;}
+    
+    div[data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
+    div[data-testid="stDecoration"] {display: none !important;}
+    div[data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    button[title="View app in Streamlit Community Cloud"] {display: none !important;}
+    
+    /* Ajuste de espaçamento superior sem o header padrão */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 3rem !important;
+    }
+
+    /* Tipografia e componentes da pesquisa */
     .main-header {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         color: #1B4965;
@@ -356,3 +376,4 @@ elif opcao_menu == "📖 Metodologia & LGPD":
     - **SIMPRO / Brasíndice:** Referenciais de medicamentos e insumos hospitalares;
     - **Tabelas de Distribuidores:** Valores de aquisição e comodato de dispositivos médicos especiais.
     """)
+
