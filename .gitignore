@@ -1,0 +1,24 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.venv/
+venv/
+ENV/
+
+# Streamlit Secrets (Sensitive API Keys)
+.streamlit/secrets.toml
+
+# Environment variables
+.env
+
+# Uploads & Local Evidence Storage (LGPD Compliance)
+data/uploads/
+data/*.sqlite
+data/*.db
+data/temp/
+
+# OS
+.DS_Store
+Thumbs.db
