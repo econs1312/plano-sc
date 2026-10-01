@@ -22,3 +22,8 @@ data/temp/
 # OS
 .DS_Store
 Thumbs.db
+# Pastas e arquivos de trabalho locais/ignorados
+.ignore/
+.ignore
+*.pdf
+
