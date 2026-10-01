@@ -1,13 +1,16 @@
 ﻿import json
 import re
-import google.generativeai as genai
+import base64
+import urllib.request
+import urllib.error
 from modules.anonymizer import sanitizar_texto, higienizar_item
 
+# Modelos ativos compatíveis com a chave da API Gemini (v1beta)
 MODELOS_DISPONIVEIS = [
-    "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-pro"
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.6-flash",
+    "gemini-flash-latest"
 ]
 
 PROMPT_SISTEMA = """
@@ -45,81 +48,146 @@ DIRETRIZES FUNDAMENTAIS:
 
 def extrair_evidencia_com_gemini(arquivo_bytes: bytes, mime_type: str, api_key: str) -> dict:
     """
-    Envia a imagem ou PDF para o modelo Gemini e retorna o dicionário estruturado.
+    Envia a imagem ou PDF diretamente para a API Gemini (REST v1beta) com structured JSON.
     """
     if not api_key:
         raise ValueError("Chave da API Gemini não informada.")
 
-    genai.configure(api_key=api_key)
-    
-    ultimo_erro = None
-    for modelo_nome in MODELOS_DISPONIVEIS:
-        try:
-            model = genai.GenerativeModel(modelo_nome)
-            
-            # Preparar payload multimodal
-            partes = [
-                {"mime_type": mime_type, "data": arquivo_bytes},
-                PROMPT_SISTEMA
-            ]
-            
-            response = model.generate_content(
-                partes,
-                generation_config={
-                    "temperature": 0.1,
-                    "response_mime_type": "application/json"
-                }
-            )
-            
-            texto_resposta = response.text.strip()
-            
-            # Limpar eventuais blocos markdown `json ... `
-            texto_limpo = re.sub(r'^`(?:json)?\s*', '', texto_resposta, flags=re.MULTILINE)
-            texto_limpo = re.sub(r'\s*`$', '', texto_limpo, flags=re.MULTILINE).strip()
-            
-            dados = json.loads(texto_limpo)
-            
-            # Higienização de segurança pós-extração
-            dados["hospital_ou_prestador"] = sanitizar_texto(dados.get("hospital_ou_prestador", "Não informado"))
-            dados["data_evento"] = sanitizar_texto(dados.get("data_evento", ""))
-            dados["tipo_atendimento"] = sanitizar_texto(dados.get("tipo_atendimento", "Não especificado"))
-            
-            itens_tratados = []
-            for item in dados.get("itens", []):
-                itens_tratados.append(higienizar_item(item))
-            dados["itens"] = itens_tratados
-            
-            return {
-                "sucesso": True,
-                "modelo_usado": modelo_nome,
-                "dados": dados
+    # Codificar arquivo em Base64
+    b64_data = base64.b64encode(arquivo_bytes).decode("ascii")
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": b64_data
+                        }
+                    },
+                    {
+                        "text": PROMPT_SISTEMA
+                    }
+                ]
             }
-            
+        ],
+        "generationConfig": {
+            "temperature": 0.1,
+            "responseMimeType": "application/json"
+        }
+    }
+    
+    json_bytes = json.dumps(payload).encode("utf-8")
+    ultimo_erro = None
+
+    for modelo_nome in MODELOS_DISPONIVEIS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo_nome}:generateContent?key={api_key.strip()}"
+        req = urllib.request.Request(
+            url,
+            data=json_bytes,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST"
+        )
+        
+        try:
+            with urllib.request.urlopen(req, timeout=35) as resp:
+                resposta_api = json.loads(resp.read().decode("utf-8"))
+                
+                candidatos = resposta_api.get("candidates", [])
+                if not candidatos:
+                    continue
+                    
+                partes = candidatos[0].get("content", {}).get("parts", [])
+                if not partes:
+                    continue
+                    
+                texto_resposta = partes[0].get("text", "").strip()
+                
+                # Limpar eventuais blocos markdown `json ... `
+                texto_limpo = re.sub(r"^`(?:json)?\s*", "", texto_resposta, flags=re.MULTILINE)
+                texto_limpo = re.sub(r"\s*`$", "", texto_limpo, flags=re.MULTILINE).strip()
+                
+                dados = json.loads(texto_limpo)
+                
+                # Higienização de segurança pós-extração
+                dados["hospital_ou_prestador"] = sanitizar_texto(dados.get("hospital_ou_prestador", "Não informado"))
+                dados["data_evento"] = sanitizar_texto(dados.get("data_evento", ""))
+                dados["tipo_atendimento"] = sanitizar_texto(dados.get("tipo_atendimento", "Não especificado"))
+                
+                itens_tratados = []
+                for item in dados.get("itens", []):
+                    itens_tratados.append(higienizar_item(item))
+                dados["itens"] = itens_tratados
+                
+                return {
+                    "sucesso": True,
+                    "modelo_usado": modelo_nome,
+                    "dados": dados
+                }
+                
+        except urllib.error.HTTPError as e:
+            try:
+                err_body = e.read().decode("utf-8")
+                ultimo_erro = f"HTTP {e.code}: {err_body}"
+            except Exception:
+                ultimo_erro = f"HTTP {e.code}: {e.reason}"
+            continue
         except Exception as e:
-            ultimo_erro = e
+            ultimo_erro = str(e)
             continue
 
     return {
         "sucesso": False,
-        "erro": f"Não foi possível processar o documento com os modelos Gemini disponíveis: {str(ultimo_erro)}"
+        "erro": f"Não foi possível processar o documento com os modelos Gemini disponíveis: {ultimo_erro}"
     }
-
 
 def transcrever_audio_com_gemini(audio_bytes: bytes, mime_type: str, api_key: str) -> str:
     """
-    Transcreve com IA o relato falado do colega via Gemini.
+    Transcreve com IA o relato falado do colega via Gemini REST v1beta.
     """
     if not api_key:
         return ""
-    genai.configure(api_key=api_key)
-    for modelo in MODELOS_DISPONIVEIS:
+
+    b64_audio = base64.b64encode(audio_bytes).decode("ascii")
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": b64_audio
+                        }
+                    },
+                    {
+                        "text": "Transcreva fielmente o conteúdo deste áudio em português. Retorne apenas o texto transcrito, sem comentários, introduções ou aspas."
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.1
+        }
+    }
+    json_bytes = json.dumps(payload).encode("utf-8")
+
+    for modelo_nome in MODELOS_DISPONIVEIS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo_nome}:generateContent?key={api_key.strip()}"
+        req = urllib.request.Request(
+            url,
+            data=json_bytes,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST"
+        )
         try:
-            model = genai.GenerativeModel(modelo)
-            response = model.generate_content([
-                {"mime_type": mime_type, "data": audio_bytes},
-                "Transcreva fielmente o conteúdo deste áudio em português. Retorne apenas o texto transcrito, sem introduções, aspas ou comentários."
-            ])
-            return sanitizar_texto(response.text.strip())
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                resposta_api = json.loads(resp.read().decode("utf-8"))
+                candidatos = resposta_api.get("candidates", [])
+                if candidatos:
+                    texto = candidatos[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    return sanitizar_texto(texto.strip())
         except Exception:
             continue
+            
     return ""
