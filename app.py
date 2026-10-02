@@ -209,11 +209,32 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
     st.markdown("#### 3. Conferência dos Itens Identificados")
     st.caption("Revise os valores identificados. Você pode editar diretamente nas células da tabela se desejar ajustar algo:")
     
+    hosp_inicial = dados.get("hospital_ou_prestador", "")
+    if str(hosp_inicial).strip().lower() in ["não informado", "nao informado", "null", "none"]:
+        hosp_inicial = ""
+        
+    data_inicial = dados.get("data_evento", "")
+    if str(data_inicial).strip().lower() in ["não informado", "nao informado", "null", "none"]:
+        data_inicial = ""
+
     c_hosp, c_data = st.columns(2)
     with c_hosp:
-        hosp_val = st.text_input("Hospital / Prestador Identificado:", value=dados.get("hospital_ou_prestador", "Não informado"))
+        hosp_val = st.text_input(
+            "Hospital / Prestador Identificado:",
+            value=hosp_inicial,
+            placeholder="Ex: Hospital Samaritano (opcional)"
+        )
     with c_data:
-        data_val = st.text_input("Data do Evento:", value=dados.get("data_evento", ""))
+        data_val = st.text_input(
+            "Data do Evento (Obrigatório) *:",
+            value=data_inicial,
+            placeholder="Ex: 15/03/2026 ou 03/2026",
+            help="Informe a data do atendimento ou mês de competência do evento (obrigatório)."
+        )
+        if not data_val.strip() or data_val.strip().lower() in ["não informado", "nao informado"]:
+            st.caption("⚠️ :orange[**Data ausente no print.** Preencha a data acima para liberar o envio.]")
+        else:
+            st.caption("✅ :green[Data informada]")
         
     if itens:
         df_itens = pd.DataFrame(itens)
@@ -295,7 +316,15 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
             value=False
         )
         
-        if st.button("📤 Enviar Informações", type="primary", use_container_width=True, disabled=not concorda):
+        data_informada = bool(data_val.strip() and data_val.strip().lower() not in ["não informado", "nao informado"])
+        
+        if not data_informada:
+            st.warning("📅 **Data do Evento Obrigatória:** A data do atendimento não estava visível no print. Por favor, preencha o campo **Data do Evento (Obrigatório)** acima para liberar o envio.")
+        elif not concorda:
+            st.info("👆 Marque a caixa de autorização acima para habilitar o envio.")
+
+        pode_enviar = concorda and data_informada
+        if st.button("📤 Enviar Informações", type="primary", use_container_width=True, disabled=not pode_enviar):
             codigo_caso = gerar_codigo_caso(uf_selecionada)
             
             relato_partes = []

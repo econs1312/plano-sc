@@ -1,4 +1,4 @@
-﻿import json
+import json
 import re
 import base64
 import urllib.request
@@ -25,8 +25,8 @@ DIRETRIZES FUNDAMENTAIS:
 2. ESTRUTURA DOS DADOS:
    Retorne EXCLUSIVAMENTE um objeto JSON válido, sem texto explicativo adicional, com o seguinte formato:
 {
-  "hospital_ou_prestador": "Nome do hospital, laboratório ou prestador (ou 'Não informado')",
-  "data_evento": "DD/MM/AAAA ou MM/AAAA",
+  "hospital_ou_prestador": "Nome do hospital, laboratório ou prestador visível (se não estiver explícito na imagem, retorne string vazia \"\")",
+  "data_evento": "Data do evento no formato DD/MM/AAAA ou MM/AAAA (verifique cabeçalhos, títulos ou detalhes; se nenhuma data estiver visível no print, retorne string vazia \"\")",
   "tipo_atendimento": "Pronto-Socorro / Internação / Ambulatorial / Exame / Consulta / Outro",
   "itens": [
     {
@@ -111,8 +111,16 @@ def extrair_evidencia_com_gemini(arquivo_bytes: bytes, mime_type: str, api_key: 
                 dados = json.loads(texto_limpo)
                 
                 # Higienização de segurança pós-extração
-                dados["hospital_ou_prestador"] = sanitizar_texto(dados.get("hospital_ou_prestador", "Não informado"))
-                dados["data_evento"] = sanitizar_texto(dados.get("data_evento", ""))
+                raw_hosp = sanitizar_texto(dados.get("hospital_ou_prestador", ""))
+                if raw_hosp.lower() in ["não informado", "nao informado", "null", "none", "não identificado", "nao identificado"]:
+                    raw_hosp = ""
+                dados["hospital_ou_prestador"] = raw_hosp
+
+                raw_data = sanitizar_texto(dados.get("data_evento", ""))
+                if raw_data.lower() in ["não informado", "nao informado", "null", "none", "não identificado", "nao identificado"]:
+                    raw_data = ""
+                dados["data_evento"] = raw_data
+
                 dados["tipo_atendimento"] = sanitizar_texto(dados.get("tipo_atendimento", "Não especificado"))
                 
                 itens_tratados = []
