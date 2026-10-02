@@ -1,4 +1,4 @@
-﻿import streamlit as st
+import streamlit as st
 import pandas as pd
 import datetime
 import os
@@ -103,10 +103,11 @@ if modo_admin:
     
     if senha == admin_pass:
         resumo = obter_resumo_estatistico()
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric("Casos", f"{resumo['total_casos']}")
         col2.metric("Itens", f"{resumo['total_itens']}")
         col3.metric("Copart. Total", f"R$ {resumo['soma_coparticipacao']:,.2f}")
+        col4.metric("Origem dos Dados", resumo.get("fonte", "Local"))
         
         st.divider()
         df_completo = obter_todos_itens_df()
@@ -317,13 +318,17 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
             }
             
             itens_finais = df_editado.to_dict(orient="records")
-            salvar_caso(caso_info, itens_finais)
+            resultado_salvamento = salvar_caso(caso_info, itens_finais)
             
             st.balloons()
             if matricula_opcional.strip():
                 st.success(f"✅ Informações registradas com sucesso sob o protocolo **{codigo_caso}** (com identificação registrada).")
             else:
                 st.success(f"✅ Informações registradas com sucesso sob o protocolo anônimo: **{codigo_caso}**")
+            
+            if resultado_salvamento.get("gsheets_sincronizado"):
+                st.info("☁️ **Sincronização em Nuvem:** Dados salvos em tempo real na planilha do Google Drive.")
+            
             st.info("Muito obrigado pela colaboração! Suas informações ajudarão a embasar as consultas junto ao Conselho de Usuários do Plano SC.")
             
             del st.session_state["dados_extraidos"]
