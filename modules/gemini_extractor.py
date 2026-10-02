@@ -3,7 +3,7 @@ import re
 import base64
 import urllib.request
 import urllib.error
-from modules.anonymizer import sanitizar_texto, higienizar_item
+from modules.anonymizer import sanitizar_texto, higienizar_item, formatar_data_inteligente
 
 # Modelos ativos compatíveis com a chave da API Gemini (v1beta)
 MODELOS_DISPONIVEIS = [
@@ -117,9 +117,8 @@ def extrair_evidencia_com_gemini(arquivo_bytes: bytes, mime_type: str, api_key: 
                 dados["hospital_ou_prestador"] = raw_hosp
 
                 raw_data = sanitizar_texto(dados.get("data_evento", ""))
-                if raw_data.lower() in ["não informado", "nao informado", "null", "none", "não identificado", "nao identificado"]:
-                    raw_data = ""
-                dados["data_evento"] = raw_data
+                fmt_data, eh_valida = formatar_data_inteligente(raw_data)
+                dados["data_evento"] = fmt_data if eh_valida else ""
 
                 dados["tipo_atendimento"] = sanitizar_texto(dados.get("tipo_atendimento", "Não especificado"))
                 

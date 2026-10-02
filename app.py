@@ -4,7 +4,7 @@ import datetime
 import os
 import io
 
-from modules.anonymizer import gerar_codigo_caso, sanitizar_texto
+from modules.anonymizer import gerar_codigo_caso, sanitizar_texto, formatar_data_inteligente
 from modules.gemini_extractor import extrair_evidencia_com_gemini, transcrever_audio_com_gemini
 from modules.storage import init_db, salvar_caso, obter_resumo_estatistico, obter_todos_itens_df, exportar_para_excel
 
@@ -217,6 +217,19 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
     if str(data_inicial).strip().lower() in ["não informado", "nao informado", "null", "none"]:
         data_inicial = ""
 
+    # Inicializar estado da data com formatação automática
+    dados_id = str(id(dados))
+    if st.session_state.get("ultimo_id_dados_data") != dados_id:
+        fmt_ini, _ = formatar_data_inteligente(data_inicial)
+        st.session_state["campo_data_evento"] = fmt_ini if fmt_ini else data_inicial
+        st.session_state["ultimo_id_dados_data"] = dados_id
+
+    def on_data_change():
+        digitado = st.session_state.get("campo_data_evento", "")
+        formatado, valido = formatar_data_inteligente(digitado)
+        if valido:
+            st.session_state["campo_data_evento"] = formatado
+
     c_hosp, c_data = st.columns(2)
     with c_hosp:
         hosp_val = st.text_input(
@@ -227,14 +240,21 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
     with c_data:
         data_val = st.text_input(
             "Data do Evento (Obrigatório) *:",
-            value=data_inicial,
-            placeholder="Ex: 15/03/2026 ou 03/2026",
-            help="Informe a data do atendimento ou mês de competência do evento (obrigatório)."
+            key="campo_data_evento",
+            on_change=on_data_change,
+            placeholder="Ex: 01/10/2026 ou 01102026",
+            help="Pode digitar apenas números (ex: 01102026 ou 102026) que o sistema formata automaticamente."
         )
-        if not data_val.strip() or data_val.strip().lower() in ["não informado", "nao informado"]:
-            st.caption("⚠️ :orange[**Data ausente no print.** Preencha a data acima para liberar o envio.]")
+        data_formatada, data_valida = formatar_data_inteligente(data_val)
+        if data_valida:
+            if data_val == data_formatada:
+                st.caption(f"✅ :green[Data confirmada: **{data_formatada}**]")
+            else:
+                st.caption(f"✅ :green[Formatada automaticamente: **{data_formatada}**]")
+        elif not data_val.strip():
+            st.caption("⚠️ :orange[**Data ausente no print.** Digite a data (ex: 01102026) para liberar o envio.]")
         else:
-            st.caption("✅ :green[Data informada]")
+            st.caption("❌ :red[Formato não reconhecido. Digite no formato dia/mês/ano (ex: 01102026).]")
         
     if itens:
         df_itens = pd.DataFrame(itens)
@@ -316,14 +336,14 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
             value=False
         )
         
-        data_informada = bool(data_val.strip() and data_val.strip().lower() not in ["não informado", "nao informado"])
+        data_formatada, data_valida = formatar_data_inteligente(data_val)
         
-        if not data_informada:
-            st.warning("📅 **Data do Evento Obrigatória:** A data do atendimento não estava visível no print. Por favor, preencha o campo **Data do Evento (Obrigatório)** acima para liberar o envio.")
+        if not data_valida:
+            st.warning("📅 **Data do Evento Obrigatória:** Digite uma data válida (ex: `01102026`, `01/10/2026` ou `10/2026`) no campo acima para liberar o envio.")
         elif not concorda:
             st.info("👆 Marque a caixa de autorização acima para habilitar o envio.")
 
-        pode_enviar = concorda and data_informada
+        pode_enviar = concorda and data_valida
         if st.button("📤 Enviar Informações", type="primary", use_container_width=True, disabled=not pode_enviar):
             codigo_caso = gerar_codigo_caso(uf_selecionada)
             
@@ -338,10 +358,10 @@ if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]
                 "codigo_caso": codigo_caso,
                 "uf": uf_selecionada,
                 "cidade": sanitizar_texto(cidade_informada),
-                "hospital_prestador": sanitizar_texto(hosp_val),
+                "hospital_prestador": sanitizar_texto(hosp_val) or "Não informado",
                 "tipo_atendimento": tipo_atendimento_selecionado,
                 "natureza_inconsistencia": natureza_inconsistencia_selecionada,
-                "data_evento": sanitizar_texto(data_val),
+                "data_evento": data_formatada if data_valida else sanitizar_texto(data_val),
                 "identificacao_opcional": matricula_opcional.strip(),
                 "relato_observacoes": relato_final
             }
